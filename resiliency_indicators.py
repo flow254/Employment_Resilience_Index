@@ -53,14 +53,15 @@ mobility_df = pd.read_csv(mobility_path) #"global_mobility_report.csv
 ##Obtain only countrywide data
 mobility_df = mobility_df.loc[(mobility_df.sub_region_1.isnull()) & 
                 (mobility_df.sub_region_2.isnull())]  
-#housekeeping
+
+#housekeeping -> rename columns + average out mobility rates across countries 
  mobility_df.drop(columns = ['country_region_code', 'sub_region_1', 'sub_region_2'], inplace = True)
 mobility_df.rename(columns={'country_region':'country'}, inplace = True)
 #obtain global averages for first 30 days
 global_mobility_averages = mobility_df.groupby('country').mean()
 global_mobility_averages.to_csv("global_mobility_averages.csv") 
  
-#Join datasets
+#Join democracy + mobility datasets
  average_mobility_df = pd.read_csv("global_mobility_averages.csv")
  pd.read_csv("democracy_index_2019.csv")
  joined_df = pd.merge(average_mobility_df,democracy_df, on='country',how='inner')
@@ -72,7 +73,7 @@ global_mobility_averages.to_csv("global_mobility_averages.csv")
                        joined_df.democracy_score,equal_var=False)
  
  
-##General mobility trends over measured time
+##General mobility trends across countries measured over time (duration = 3 months)
 all_mobility_df = pd.read_csv(mobility_path) #global_mobility_report.csv
  
 all_mobility_df = all_mobility_df.loc[(all_mobility_df.sub_region_1.isnull()) & 
@@ -94,14 +95,14 @@ all_mobility_averages = all_mobility_df.groupby('country').mean()
 all_mobility_averages.to_csv("all_mobility_averages.csv")
 
 
-#ilo data
+#read in ILO data
 ilo_df = pd.read_csv(ilo_path)
 #get national data
 national_data = (ilo_df['sex'] == 'Total') & (ilo_df['area_type'] == 'National')
 ilo_df = ilo_df.loc[national_data]
 #get only 2020 data
 ilo_df = ilo_df.loc[ilo_df['year'] == 2020]
-#housekeeping
+#housekeeping -> drop + rename columns
 ilo_df.drop(columns=['ref_area','agriculture','industry','services','sex'], inplace = True)
 ilo_df.reset_index(inplace=True)
 ilo_df.rename(columns={'ref_area.label':'country'}, inplace=True)
@@ -112,12 +113,12 @@ country_work_home = pd.read_csv(work_home_path) #use country_workathome.csv
 internet_df = pd.read_csv(internet_access_path) #use all_mobility_averages.csv
 ilo_ref_df = pd.read_csv(ilo_ref_path)  #use ilostats_ref.csv
 
-#housekeeping
+#housekeeping -> drop + rename columns 
 country_work_home.drop(columns=['country_code','year_ilo'], inplace=True)
 internet_df.drop(columns=['2017', 'Unnamed: 3'],inplace=True)
 internet_df.rename(columns={'2018':'internet_penetration'},inplace=True)
  
-#merge obtained datasets
+#merge obtained datasets: ILO data, work from home data and internet penetration datasets
  
 core_indicators_df = pd.merge(ilo_ref_df,all_mobility_df,on='country',how='left')
 core_indicators_df = pd.merge(core_indicators_df,internet_df, on='country',how='left')
@@ -185,7 +186,7 @@ gdp_df.rename(columns={'Country Name': 'country'},inplace=True)
 gdp_df.rename(columns={'2018':'gdppc_2018'},inplace=True)
 
 
-#merge datasets
+#merge datasets: covid cases, growth rates, stringency levels and gdp per capita
 macro_mobility_df = pd.read_csv(macro_mobility_path) #read in macro_mobility.csv
 macro_mobility_health = pd.merge(macro_mobility_df,covid_cases,on='country',how='left')
 macro_mobility_health = pd.merge(macro_mobility_health,covid_deaths,on='country',how='left')
@@ -208,6 +209,7 @@ macro_mobility_health['all_teleworkable'] = macro_mobility_health.teleworkable_a
 
 
 ##creating resiliency index with stata; macro_mobility_health exported at end as macro_resiliency
+#This part of the code was processed in stata to obtain principal components via PCA
 '''
 -> import macro_mobility_health.csv
 #standardize data
@@ -250,7 +252,7 @@ export delimited using "macro_resiliency", replace
 '''
 
 
-##normalize & include resiliency index in df
+##normalize resiliency values & include resiliency index in df
 macro_resiliency = pd.read_csv("macro_resiliency.csv")
 res_min = macro_resiliency.resiliency.min()
 res_max = macro_resiliency.resiliency.max()
@@ -262,6 +264,7 @@ newVals = (((macro_resiliency.resiliency - res_min) * newRange)/oldRange) + newM
 macro_resiliency['resiliency_index'] = newVals*100
 
 macro_resiliency.to_csv("all_macro_resiliency_data.csv")
+
 ##prepare relevant dataframes for correlations
 ##Relevant df's -> Mobility and by dominant sector (agriculture, industry services)
 
@@ -276,20 +279,20 @@ ind_df = ind_df.loc[:,['residential_percent_change_from_baseline','workplaces_pe
 services_df = macro_mobility_health.loc[macro_mobility_health.dominant_sector == 'services_percent']
 services_df = services_df.loc[:,['residential_percent_change_from_baseline','workplaces_percent_change_from_baseline','max_growth_percent','avg_stringency_index','total_cases','total_cases_world_percent','death_rate','all_teleworkable', 'internet_penetration','gdppc_2018']]
 
-#correlations
+#get all correlations across regions by major employment industry 
 mobility_corrs = mobility_corrs.corr()
 relevant_correlations = residential_corrs.corr()
 ag_corrs = ag_df.corr()
 services_corrs = services_df.corr() #only 2 entries in industry df, 1 with NaN values so didn't check for correlations
 
-##out to csv's
+##send correlations out to csv's
 mobility_corrs.to_csv("mobility_corrs.csv")
 relevant_correlations.to_csv("relevant_corrs.csv")
 ag_corrs.to_csv("ag_correlations.csv")
 services_corrs.to_csv("serv_corrs.csv")
 
 
-#label owid covid data with region + income group
+#label Our World in Data covid data with region + income group
 labels_df = macro_mobility_health.loc[:,['country', 'ilo_region.label','ilo_subregion_broad.label', 'ilo_subregion_detailed.label','wb_income_group.label']]
 owid_df = pd.read_csv('owid-covid-data.csv')
 owid_df.rename(columns={'location':'country'},inplace=True)
