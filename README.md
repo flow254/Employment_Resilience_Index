@@ -1,2 +1,2 @@
-# resiliency_index
- This code can be used to generate Covid resiliency indices across countries. It uses Google Mobility Data, ILO Employment Data, Internet penetration and GDP per capita datasets from the WorldBank. Covid health and stringency data is obtained from Our World in Data while data on jobs that can be done from home (teleworkable jobs) comes from Dingel and Neiman (2020) and the ILO. 
+# COVID-19 Employment Resilience Index
+ This code can be used to generate Covid-19 employment resilience indices across countries. It uses Google Mobility Data, ILO Employment Data, Internet penetration and GDP per capita datasets from the WorldBank. Covid health and stringency data is obtained from Our World in Data while data on jobs that can be done from home (teleworkable jobs) comes from Dingel and Neiman (2020) and the ILO. 
